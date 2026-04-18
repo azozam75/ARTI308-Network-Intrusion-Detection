@@ -13,3 +13,5 @@ Web Attack        1526
 Botnet            1376
 
 Imbalance ratio (majority / minority): 1,156.4
+
+PCA variance explained — PC1: 33.20%, PC2: 16.47%, combined: 49.66%

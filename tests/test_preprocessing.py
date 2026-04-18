@@ -14,6 +14,16 @@ from backend.preprocessing import (
 )
 
 
+def test_dataconfig_encoding_and_web_attack_keys() -> None:
+    # Guard against regressing encoding to latin-1 or the map drifting off
+    # the U+FFFD that the source CSVs actually contain.
+    cfg = DataConfig()
+    assert cfg.file_encoding == "utf-8"
+    web_keys = [k for k in ATTACK_CATEGORY_MAP if k.startswith("Web Attack")]
+    assert len(web_keys) == 3
+    assert all("\ufffd" in k for k in web_keys)
+
+
 def test_clean_column_names_strips_and_dedupes() -> None:
     df = pd.DataFrame([[1, 2, 3]], columns=[" Fwd Header Length", "Fwd Header Length", " Other "])
     out = clean_column_names(df)

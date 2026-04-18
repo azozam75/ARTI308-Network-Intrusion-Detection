@@ -1,7 +1,9 @@
 """Correlation-based feature pruning on the processed train split.
 
-Greedy drop: for every pair with |r| >= threshold, remove the member with
-lower variance (less informative). Writes the retained list and the drop
+Greedy drop: for every pair with |r| >= threshold, remove the member
+that is more globally redundant (higher mean |r| against all other
+features). Scale-invariant — variance-based tie-breaks are meaningless
+on StandardScaler-scaled inputs. Writes the retained list and the drop
 log to data/processed/ for downstream model code to consume.
 """
 from __future__ import annotations
@@ -27,13 +29,14 @@ def prune_correlated(
 ) -> tuple[list[str], list[dict]]:
     """Return (retained, dropped) where dropped[i] = {feature, paired_with, corr}."""
     corr = df[features].corr().abs()
-    variances = df[features].var()
+    # Mean |r| against every *other* feature. Higher = more globally
+    # redundant; when we must drop one of a pair, drop this one.
+    mean_abs_corr = (corr.sum(axis=0) - 1.0) / (len(features) - 1)
     upper = corr.where(np.triu(np.ones(corr.shape, dtype=bool), k=1))
 
     dropped_set: set[str] = set()
     drop_log: list[dict] = []
 
-    # Iterate pairs in descending correlation so strongest redundancies go first.
     pairs = (
         upper.stack()
         .loc[lambda s: s >= threshold]
@@ -42,7 +45,7 @@ def prune_correlated(
     for (a, b), r in pairs.items():
         if a in dropped_set or b in dropped_set:
             continue
-        loser = a if variances[a] < variances[b] else b
+        loser = a if mean_abs_corr[a] >= mean_abs_corr[b] else b
         keeper = b if loser == a else a
         dropped_set.add(loser)
         drop_log.append({"dropped": loser, "kept": keeper, "abs_corr": float(r)})
