@@ -1,0 +1,15 @@
+Train shape: (1981486, 72)
+Feature count: 70
+NaNs in features: 0
+
+Class distribution:
+AttackCategory
+BENIGN         1591167
+DoS             176863
+PortScan        111250
+DDoS             89619
+Brute Force       9685
+Web Attack        1526
+Botnet            1376
+
+Imbalance ratio (majority / minority): 1,156.4
