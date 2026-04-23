@@ -16,8 +16,9 @@ build/
 # Jupyter (not used but just in case)
 .ipynb_checkpoints/
 
-# Outputs (optional - uncomment to exclude)
-# outputs/
+# Outputs — keep metric summaries & figures tracked, exclude large regeneratable artifacts
+outputs/results/*.joblib
+outputs/results/*.parquet
 
 # Node / React
 frontend/node_modules/
