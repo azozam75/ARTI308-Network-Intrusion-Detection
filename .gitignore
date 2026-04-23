@@ -19,6 +19,7 @@ build/
 # Outputs — keep metric summaries & figures tracked, exclude large regeneratable artifacts
 outputs/results/*.joblib
 outputs/results/*.parquet
+outputs/results/*.log
 
 # Node / React
 frontend/node_modules/

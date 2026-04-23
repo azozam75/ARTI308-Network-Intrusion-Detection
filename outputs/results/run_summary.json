@@ -1,0 +1,117 @@
+{
+  "timestamp_utc": "2026-04-23T10:21:15.790430+00:00",
+  "config": {
+    "processed_dir": "C:\\Users\\Azoz\\Desktop\\ARTI308-Network-Intrusion-Detection\\data\\processed",
+    "outputs_dir": "C:\\Users\\Azoz\\Desktop\\ARTI308-Network-Intrusion-Detection\\outputs\\results",
+    "selected_features_path": "C:\\Users\\Azoz\\Desktop\\ARTI308-Network-Intrusion-Detection\\data\\processed\\selected_features.json",
+    "label_column": "Label",
+    "category_column": "AttackCategory",
+    "benign_label": "BENIGN",
+    "n_estimators": 200,
+    "max_samples": 0.1,
+    "contamination": "auto",
+    "max_features": 0.5,
+    "bootstrap": false,
+    "random_state": 42,
+    "n_jobs": -1,
+    "train_subsample": 400000,
+    "threshold_grid_size": 401
+  },
+  "n_features": 50,
+  "threshold": -0.03973510600465131,
+  "threshold_selection_stats": {
+    "f1": 0.5485510775599659,
+    "precision": 0.754521855635572,
+    "recall": 0.43091822094691534,
+    "positive_rate": 0.11249985280437112
+  },
+  "val_metrics": {
+    "accuracy": 0.8602842641984904,
+    "precision": 0.754521855635572,
+    "recall": 0.43091822094691534,
+    "f1": 0.5485510775599659,
+    "f1_macro": 0.732952165482054,
+    "f1_weighted": 0.8447054654892403,
+    "roc_auc": 0.8195088402425326,
+    "false_positive_rate": 0.03439062660390363,
+    "true_positive_rate": 0.43091822094691534,
+    "confusion_matrix": {
+      "tn": 329239,
+      "fp": 11726,
+      "fn": 47598,
+      "tp": 36042
+    },
+    "support": {
+      "benign": 340965,
+      "attack": 83640
+    }
+  },
+  "val_attack_metrics": {
+    "BENIGN": {
+      "n": 340965,
+      "false_positive_rate": 0.03439062660390363,
+      "score_mean": -0.16009283363657154,
+      "score_median": -0.17236772602617767,
+      "score_std": 0.04414094602324624,
+      "score_p10": -0.19119111749408657,
+      "score_p90": -0.11542885394550553
+    },
+    "Botnet": {
+      "n": 295,
+      "recall": 0.020338983050847456,
+      "score_mean": -0.1597064367843937,
+      "score_median": -0.16991516937059303,
+      "score_std": 0.030542785207008812,
+      "score_p10": -0.17191426691072775,
+      "score_p90": -0.15406935013233514
+    },
+    "Brute Force": {
+      "n": 2075,
+      "recall": 0.0,
+      "score_mean": -0.16011530825395592,
+      "score_median": -0.16150230816559524,
+      "score_std": 0.010675412677913764,
+      "score_p10": -0.17300594778296774,
+      "score_p90": -0.147349768854604
+    },
+    "DDoS": {
+      "n": 19204,
+      "recall": 0.5896167465111435,
+      "score_mean": -0.036060015740081976,
+      "score_median": -0.016347359772539705,
+      "score_std": 0.10491311684224153,
+      "score_p10": -0.16960383055125505,
+      "score_p90": 0.11532769004443869
+    },
+    "DoS": {
+      "n": 37899,
+      "recall": 0.6500435367687801,
+      "score_mean": 0.00959077425437265,
+      "score_median": 0.0830272303463766,
+      "score_std": 0.13025552902004162,
+      "score_p10": -0.17779588048232509,
+      "score_p90": 0.1400977677397001
+    },
+    "PortScan": {
+      "n": 23840,
+      "recall": 0.002726510067114094,
+      "score_mean": -0.14775052840639022,
+      "score_median": -0.14159159490830975,
+      "score_std": 0.016145815972081905,
+      "score_p10": -0.16285170203119614,
+      "score_p90": -0.1353702334880616
+    },
+    "Web Attack": {
+      "n": 327,
+      "recall": 0.03669724770642202,
+      "score_mean": -0.15245308226355353,
+      "score_median": -0.15667376415117662,
+      "score_std": 0.027004462855052633,
+      "score_p10": -0.15762956483426513,
+      "score_p90": -0.15415389944785557
+    }
+  },
+  "model_path": "C:\\Users\\Azoz\\Desktop\\ARTI308-Network-Intrusion-Detection\\outputs\\results\\iforest.joblib",
+  "selected_from_tuning": true,
+  "tuning_results_path": "C:\\Users\\Azoz\\Desktop\\ARTI308-Network-Intrusion-Detection\\outputs\\results\\tuning_results.json"
+}
