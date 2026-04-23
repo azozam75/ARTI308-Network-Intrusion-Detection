@@ -113,5 +113,91 @@
   },
   "model_path": "C:\\Users\\Azoz\\Desktop\\ARTI308-Network-Intrusion-Detection\\outputs\\results\\iforest.joblib",
   "selected_from_tuning": true,
-  "tuning_results_path": "C:\\Users\\Azoz\\Desktop\\ARTI308-Network-Intrusion-Detection\\outputs\\results\\tuning_results.json"
+  "tuning_results_path": "C:\\Users\\Azoz\\Desktop\\ARTI308-Network-Intrusion-Detection\\outputs\\results\\tuning_results.json",
+  "test_metrics": {
+    "accuracy": 0.859613052130804,
+    "precision": 0.7534113677106401,
+    "recall": 0.42710425633668103,
+    "f1": 0.5451604288275914,
+    "f1_macro": 0.731078727965884,
+    "f1_weighted": 0.8437515093174016,
+    "roc_auc": 0.8189105610687499,
+    "false_positive_rate": 0.03429090962415497,
+    "true_positive_rate": 0.42710425633668103,
+    "confusion_matrix": {
+      "tn": 329273,
+      "fp": 11692,
+      "fn": 47917,
+      "tp": 35723
+    },
+    "support": {
+      "benign": 340965,
+      "attack": 83640
+    }
+  },
+  "test_attack_metrics": {
+    "BENIGN": {
+      "n": 340965,
+      "false_positive_rate": 0.03429090962415497,
+      "score_mean": -0.16013010389890012,
+      "score_median": -0.172322044572999,
+      "score_std": 0.044014479004512,
+      "score_p10": -0.19117444382131316,
+      "score_p90": -0.11575238829559246
+    },
+    "Botnet": {
+      "n": 295,
+      "recall": 0.006779661016949152,
+      "score_mean": -0.1629412086067646,
+      "score_median": -0.17043531244532523,
+      "score_std": 0.01896392959058914,
+      "score_p10": -0.17155581499799433,
+      "score_p90": -0.15392235052395004
+    },
+    "Brute Force": {
+      "n": 2075,
+      "recall": 0.0,
+      "score_mean": -0.15945991123399889,
+      "score_median": -0.15453405026930256,
+      "score_std": 0.010977576164052965,
+      "score_p10": -0.17298419512632535,
+      "score_p90": -0.14725383044260243
+    },
+    "DDoS": {
+      "n": 19204,
+      "recall": 0.5794105394709436,
+      "score_mean": -0.03800778082009386,
+      "score_median": -0.018061405064519614,
+      "score_std": 0.10545609425904073,
+      "score_p10": -0.16960383055125505,
+      "score_p90": 0.11471451795444017
+    },
+    "DoS": {
+      "n": 37899,
+      "recall": 0.646375893823056,
+      "score_mean": 0.008962031415103301,
+      "score_median": 0.0828699954609351,
+      "score_std": 0.13038743157678506,
+      "score_p10": -0.17779588048232509,
+      "score_p90": 0.1401840709178367
+    },
+    "PortScan": {
+      "n": 23840,
+      "recall": 0.0033137583892617448,
+      "score_mean": -0.1475056805320721,
+      "score_median": -0.14159159490830975,
+      "score_std": 0.01680051793156847,
+      "score_p10": -0.16285170203119614,
+      "score_p90": -0.13518386844304947
+    },
+    "Web Attack": {
+      "n": 327,
+      "recall": 0.05504587155963303,
+      "score_mean": -0.1483252851914772,
+      "score_median": -0.15649222343930397,
+      "score_std": 0.033889798862802016,
+      "score_p10": -0.1574360354856647,
+      "score_p90": -0.15116751738867867
+    }
+  }
 }
