@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SENTINEL — Isolation Forest NIDS</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  :root {
+    --bg:        oklch(0.11 0.022 245);
+    --surface:   oklch(0.15 0.022 245);
+    --surface2:  oklch(0.18 0.020 245);
+    --surface3:  oklch(0.21 0.020 245);
+    --border:    oklch(0.24 0.025 245);
+    --border2:   oklch(0.30 0.025 245);
+    --text:      oklch(0.90 0.010 245);
+    --muted:     oklch(0.56 0.018 245);
+    --dim:       oklch(0.40 0.018 245);
+    --amber:     oklch(0.76 0.175 58);
+    --amber2:    oklch(0.65 0.175 58);
+    --amber-bg:  oklch(0.76 0.175 58 / 0.10);
+    --red:       oklch(0.64 0.210 22);
+    --red-bg:    oklch(0.64 0.210 22 / 0.10);
+    --green:     oklch(0.68 0.160 148);
+    --green-bg:  oklch(0.68 0.160 148 / 0.09);
+    --cyan:      oklch(0.75 0.110 202);
+    --cyan-bg:   oklch(0.75 0.110 202 / 0.09);
+    --violet:    oklch(0.72 0.140 290);
+    --violet-bg: oklch(0.72 0.140 290 / 0.09);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Space Grotesk', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: var(--sans); font-size: 14px;
+    height: 100vh; overflow: hidden;
+    background-image: repeating-linear-gradient(0deg, transparent, transparent 2px,
+      oklch(0.08 0.015 245 / 0.18) 2px, oklch(0.08 0.015 245 / 0.18) 4px);
+  }
+  #root { height: 100vh; display: flex; flex-direction: column; }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  @keyframes pulse-red  { 0%,100%{opacity:1} 50%{opacity:0.35} }
+  @keyframes blink      { 0%,100%{opacity:1} 50%{opacity:0} }
+  @keyframes slide-in   { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+  button { transition: all 0.15s; }
+</style>
+<template id="__bundler_thumbnail" data-bg-color="#111827">
+  <svg viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
+    <!-- navy bg -->
+    <rect width="120" height="80" fill="#111827"/>
+    <!-- sidebar -->
+    <rect x="0" y="8" width="12" height="72" fill="#1e2a3a"/>
+    <!-- top bar -->
+    <rect x="0" y="0" width="120" height="8" fill="#1e2a3a"/>
+    <!-- hex logo -->
+    <polygon points="6,3 8,1.5 10,3 10,5 8,6.5 6,5" fill="none" stroke="#f59e0b" strokeWidth="0.6"/>
+    <circle cx="8" cy="4" r="1" fill="#f59e0b"/>
+    <!-- metric cards -->
+    <rect x="14" y="10" width="20" height="10" rx="1" fill="#1e2a3a"/>
+    <rect x="36" y="10" width="20" height="10" rx="1" fill="#1e2a3a"/>
+    <rect x="58" y="10" width="20" height="10" rx="1" fill="#1e2a3a"/>
+    <rect x="80" y="10" width="20" height="10" rx="1" fill="#1e2a3a"/>
+    <rect x="102" y="10" width="16" height="10" rx="1" fill="#1e2a3a"/>
+    <!-- amber metric highlights -->
+    <rect x="14" y="10" width="20" height="1.5" rx="0.5" fill="#f59e0b" opacity="0.8"/>
+    <rect x="58" y="10" width="20" height="1.5" rx="0.5" fill="#8b5cf6" opacity="0.8"/>
+    <!-- metric values -->
+    <rect x="16" y="14" width="12" height="3" rx="0.5" fill="#f59e0b" opacity="0.7"/>
+    <rect x="38" y="14" width="12" height="3" rx="0.5" fill="#f59e0b" opacity="0.7"/>
+    <rect x="60" y="14" width="12" height="3" rx="0.5" fill="#8b5cf6" opacity="0.7"/>
+    <rect x="82" y="14" width="12" height="3" rx="0.5" fill="#f59e0b" opacity="0.7"/>
+    <!-- recall bars panel -->
+    <rect x="14" y="23" width="32" height="28" rx="1" fill="#1e2a3a"/>
+    <rect x="14" y="23" width="32" height="3" rx="1" fill="#243044"/>
+    {/* recall bars */}
+    {[0,1,2,3,4,5].map((i) => <>
+      <rect key={`b${i}`} x="22" y={28+i*4} width="20" height="2" rx="1" fill="#374151"/>
+      <rect key={`f${i}`} x="22" y={28+i*4} width={[19,18,20,16,14,15][i]} height="2" rx="1" fill={['#ef4444','#dc2626','#06b6d4','#f59e0b','#a3a008','#8b5cf6'][i]} opacity="0.7"/>
+    </>)}
+    <!-- histogram panel -->
+    <rect x="48" y="23" width="36" height="28" rx="1" fill="#1e2a3a"/>
+    <rect x="48" y="23" width="36" height="3" rx="1" fill="#243044"/>
+    {[0,1,2,3,4,5,6,7,8,9,10,11].map(i=><>
+      <rect key={`hb${i}`} x={50+i*3} y={43-[2,3,6,8,5,3,2,2,1,1,1,1][i]} width="2" height={[2,3,6,8,5,3,2,2,1,1,1,1][i]} fill="#10b981" opacity="0.4"/>
+      <rect key={`ha${i}`} x={50+i*3} y={43-[0,0,0,1,2,4,6,5,3,2,1,1][i]} width="2" height={[0,0,0,1,2,4,6,5,3,2,1,1][i]} fill="#f59e0b" opacity="0.65"/>
+    </>)}
+    <!-- table -->
+    <rect x="14" y="53" width="88" height="25" rx="1" fill="#1e2a3a"/>
+    <rect x="14" y="53" width="88" height="4" rx="1" fill="#243044"/>
+    {[0,1,2,3,4].map(i=><>
+      <rect key={`tr${i}`} x="14" y={59+i*4} width="88" height="3" fill={i%2===0?'transparent':'#182030'} opacity="0.5"/>
+      <rect key={`td${i}`} x="16" y={59.5+i*4} width={6} height="2" rx="0.5" fill={['#ef4444','#dc2626','#06b6d4','#f59e0b','#8b5cf6'][i]} opacity="0.7"/>
+      <rect key={`te${i}`} x="24" y={59.5+i*4} width="14" height="2" rx="0.5" fill="#374151"/>
+      <rect key={`tf${i}`} x="40" y={59.5+i*4} width="18" height="2" rx="0.5" fill="#1e3a4a" opacity="0.9"/>
+    </>)}
+    <!-- right panel -->
+    <rect x="104" y="23" width="14" height="58" rx="1" fill="#1e2a3a"/>
+    <rect x="104" y="23" width="14" height="3" rx="1" fill="#243044"/>
+  </svg>
+</template>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useMemo, useCallback } = React;
+
+/* ─── TWEAKS ────────────────────────────────────────── */
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "density": "compact",
+  "liveUpdates": true,
+  "showSparklines": true,
+  "scoreThreshold": -0.039735
+}/*EDITMODE-END*/;
+
+/* ─── DOMAIN ────────────────────────────────────────── */
+const ATTACK_CATS = ['DoS','DDoS','PortScan','Brute Force','Web Attack','Botnet'];
+const CAT_COLOR = { DoS:'var(--red)', DDoS:'oklch(0.67 0.22 14)', PortScan:'var(--cyan)',
+  'Brute Force':'var(--amber)', 'Web Attack':'oklch(0.72 0.14 90)', Botnet:'var(--violet)', BENIGN:'var(--green)' };
+const CAT_BG    = { DoS:'oklch(0.64 0.210 22/0.12)', DDoS:'oklch(0.67 0.22 14/0.12)', PortScan:'var(--cyan-bg)',
+  'Brute Force':'var(--amber-bg)', 'Web Attack':'oklch(0.72 0.14 90/0.10)', Botnet:'var(--violet-bg)', BENIGN:'var(--green-bg)' };
+
+const MODEL_METRICS = {
+  accuracy:0.8603, precision:0.7545, recall:0.4309,
+  f1:0.5486, f1_macro:0.7330, roc_auc:0.8195,
+  false_positive_rate:0.0344, true_positive_rate:0.4309,
+  confusion_matrix:{tn:329239,fp:11726,fn:47598,tp:36042},
+};
+const ATTACK_RECALL = {
+  DoS:         { recall:0.6500, n:37899,  score_mean: 0.0096, score_std:0.1303 },
+  DDoS:        { recall:0.5896, n:19204,  score_mean:-0.0361, score_std:0.1049 },
+  PortScan:    { recall:0.0027, n:23840,  score_mean:-0.1478, score_std:0.0161 },
+  'Brute Force':{ recall:0.0000,n:2075,   score_mean:-0.1601, score_std:0.0107 },
+  'Web Attack':{ recall:0.0367, n:327,    score_mean:-0.1525, score_std:0.0270 },
+  Botnet:      { recall:0.0203, n:295,    score_mean:-0.1597, score_std:0.0305 },
+  BENIGN:      { false_positive_rate:0.0344, n:340965, score_mean:-0.1601, score_std:0.0441 },
+};
+
+const DOS_SUB = ['DoS Hulk','DoS GoldenEye','DoS slowloris','DoS Slowhttptest'];
+const WEB_SUB = ['XSS Injection','SQL Injection','Brute Force (Web)'];
+const BF_SUB  = ['FTP-Patator','SSH-Patator'];
+const SRC_IPS = ['185.220.101.47','45.33.32.156','194.165.16.11','77.247.181.163','91.108.4.0','23.129.64.218','162.55.18.200','5.199.130.190','10.0.1.55','172.16.0.23'];
+const GEOS    = ['RU','CN','IR','KP','UA','DE','US','BR','NG','VN'];
+const HOSTS   = ['ws-proc-01','db-master-2','api-gateway','auth-svc','k8s-node-07','mail-relay','vpn-edge','lb-prod-01','storage-nas','hr-ws-14'];
+
+const ri   = a => a[Math.floor(Math.random()*a.length)];
+const rInt = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+const rF   = (a,b) => Math.random()*(b-a)+a;
+const fmtK = n => n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':String(n);
+const f4   = n => n.toFixed(4);
+const pct  = n => (n*100).toFixed(2)+'%';
+const fmtTs   = d => d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+const fmtFull = d => `${d.toLocaleDateString('en-US',{month:'short',day:'2-digit'})} ${fmtTs(d)}`;
+
+const catSub = c => c==='DoS'?ri(DOS_SUB):c==='Web Attack'?ri(WEB_SUB):c==='Brute Force'?ri(BF_SUB):c;
+
+const gauss = (mu, sigma) => {
+  const u = 1 - Math.random(), v = Math.random();
+  return mu + sigma * Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v);
+};
+
+let _id = 9000;
+const mkEv = (threshold = TWEAK_DEFAULTS.scoreThreshold) => {
+  // Benign base rate ≈ 80% (matches val support: 340,965 / 424,605).
+  const benign = Math.random() < 0.80;
+  const cat    = benign ? 'BENIGN' : ri(ATTACK_CATS);
+  const stats  = ATTACK_RECALL[cat];
+  const score  = parseFloat(gauss(stats.score_mean, stats.score_std).toFixed(4));
+  const flagged= score >= threshold;
+  const status = benign ? (flagged?'FP':'OK') : (flagged?'DETECTED':'MISSED');
+  return { id:++_id, ts:new Date(), cat, sub:catSub(cat), src:ri(SRC_IPS), dst:ri(HOSTS), geo:ri(GEOS), score, flagged, status };
+};
+
+const INIT_EVENTS = Array.from({length:100}, ()=>{ const e=mkEv(); e.ts=new Date(Date.now()-rInt(0,3600000)); return e; })
+  .sort((a,b)=>b.ts-a.ts);
+// Seed a few guaranteed DETECTED rows at the top for visual anchoring — scores in
+// the realistic "above-threshold attack" band (DoS/DDoS p75–p90).
+['DDoS','DoS','DoS','DDoS','DoS'].forEach((c,i)=>{
+  INIT_EVENTS[i].cat=c; INIT_EVENTS[i].sub=catSub(c);
+  INIT_EVENTS[i].score=parseFloat(rF(0.05,0.14).toFixed(4));
+  INIT_EVENTS[i].flagged=true; INIT_EVENTS[i].status='DETECTED';
+});
+
+/* ─── SHARED COMPONENTS ──────────────────────────────── */
+
+const Sparkline = ({ data, color='var(--amber)', W=80, H=26 }) => {
+  const max=Math.max(...data,0.001), min=Math.min(...data), r=max-min||0.001;
+  const pts=data.map((v,i)=>`${(i/(data.length-1))*W},${H-((v-min)/r)*(H-3)-1}`).join(' ');
+  return <svg width={W} height={H} style={{display:'block',flexShrink:0}}>
+    <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" opacity="0.85"/>
+  </svg>;
+};
+
+const CatBadge = ({ cat, size='sm' }) => {
+  const fs = size==='lg' ? '11px' : '10px';
+  const pad= size==='lg' ? '3px 9px' : '2px 7px';
+  return <span style={{
+    font:`600 ${fs} var(--mono)`, letterSpacing:'0.07em', padding:pad, borderRadius:3,
+    color:CAT_COLOR[cat]||'var(--muted)', background:CAT_BG[cat]||'transparent',
+    border:`1px solid ${(CAT_COLOR[cat]||'var(--muted)')}55`, whiteSpace:'nowrap',
+    animation:(cat==='DDoS'||cat==='DoS')?'pulse-red 2.2s infinite':'none',
+  }}>{cat}</span>;
+};
+
+const SectionHead = ({ title, right }) => (
+  <div style={{padding:'8px 14px', borderBottom:'1px solid var(--border)',
+    background:'var(--surface2)', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0}}>
+    <span style={{font:'600 10px var(--sans)', letterSpacing:'0.13em', textTransform:'uppercase', color:'var(--muted)'}}>{title}</span>
+    {right}
+  </div>
+);
+
+const MetricCard = ({ label, value, sub, color='var(--amber)', spark, alert }) => (
+  <div style={{background:'var(--surface)', border:`1px solid ${alert?color:'var(--border)'}`,
+    padding:'14px 16px', display:'flex', flexDirection:'column', gap:6, position:'relative', overflow:'hidden',
+    boxShadow:alert?`0 0 20px ${color}18`:'none'}}>
+    {alert && <div style={{position:'absolute',top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${color},transparent)`}}/>}
+    <span style={{font:'500 10px var(--sans)', letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--muted)'}}>{label}</span>
+    <span style={{font:'700 28px var(--mono)', color, lineHeight:1}}>{value}</span>
+    <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-end', gap:8}}>
+      {sub && <span style={{font:'400 11px var(--mono)', color:'var(--dim)', lineHeight:1.3}}>{sub}</span>}
+      {spark && <Sparkline data={spark} color={color}/>}
+    </div>
+  </div>
+);
+
+/* ─── DASHBOARD VIEW ─────────────────────────────────── */
+const AttackRecallPanel = () => (
+  <div style={{display:'flex',flexDirection:'column',height:'100%',overflow:'hidden'}}>
+    <SectionHead title="Per-Attack Recall" right={<span style={{font:'400 10px var(--mono)',color:'var(--dim)'}}>CIC-IDS-2017 · test split</span>}/>
+    <div style={{flex:1, padding:'12px 14px', display:'flex', flexDirection:'column', gap:10, overflowY:'auto'}}>
+      {ATTACK_CATS.map(cat => {
+        const d=ATTACK_RECALL[cat], r=d?.recall??0, c=CAT_COLOR[cat];
+        return <div key={cat}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+            <div style={{display:'flex',alignItems:'center',gap:8}}><CatBadge cat={cat}/><span style={{font:'400 10px var(--mono)',color:'var(--dim)'}}>n={fmtK(d?.n||0)}</span></div>
+            <span style={{font:'700 13px var(--mono)',color:r>=0.95?'var(--green)':r>=0.85?'var(--amber)':'var(--red)'}}>{pct(r)}</span>
+          </div>
+          <div style={{height:5,background:'var(--border)',borderRadius:3,overflow:'hidden'}}>
+            <div style={{height:'100%',width:`${r*100}%`,background:c,borderRadius:3,opacity:0.75}}/>
+          </div>
+        </div>;
+      })}
+      <div style={{paddingTop:8,borderTop:'1px solid var(--border)'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+          <span style={{font:'500 10px var(--sans)',letterSpacing:'0.10em',textTransform:'uppercase',color:'var(--muted)'}}>BENIGN — FPR</span>
+          <span style={{font:'700 13px var(--mono)',color:'var(--green)'}}>{pct(ATTACK_RECALL.BENIGN.false_positive_rate)}</span>
+        </div>
+        <div style={{height:5,background:'var(--border)',borderRadius:3,overflow:'hidden'}}>
+          <div style={{height:'100%',width:`${ATTACK_RECALL.BENIGN.false_positive_rate*100}%`,background:'var(--red)',opacity:0.7,borderRadius:3}}/>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const SCORE_MIN = -0.25, SCORE_MAX = 0.20;
+const ScoreHistogram = ({ events, threshold }) => {
+  const bins=40, bArr=new Array(bins).fill(0), aArr=new Array(bins).fill(0);
+  const span = SCORE_MAX - SCORE_MIN;
+  events.forEach(e=>{
+    const norm = (e.score - SCORE_MIN) / span;
+    const i = Math.max(0, Math.min(Math.floor(norm*bins), bins-1));
+    (e.cat==='BENIGN'?bArr:aArr)[i]++;
+  });
+  const max=Math.max(...bArr,...aArr,1), W=100, H=50;
+  const bW=W/bins, tX=((threshold - SCORE_MIN) / span) * W;
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',overflow:'hidden'}}>
+      <SectionHead title="Anomaly Score Distribution" right={<span style={{font:'500 11px var(--mono)',color:'var(--amber)'}}>thr = {threshold.toFixed(4)}</span>}/>
+      <div style={{flex:1,padding:'12px 14px',display:'flex',flexDirection:'column',gap:8}}>
+        <svg viewBox={`0 0 100 ${H}`} preserveAspectRatio="none" style={{width:'100%',height:H,display:'block'}}>
+          {bArr.map((v,i)=><rect key={`b${i}`} x={i*bW} y={H-(v/max)*H} width={bW*0.75} height={(v/max)*H} fill="var(--green)" opacity="0.4"/>)}
+          {aArr.map((v,i)=><rect key={`a${i}`} x={i*bW} y={H-(v/max)*H} width={bW*0.75} height={(v/max)*H} fill="var(--amber)" opacity="0.65"/>)}
+          <line x1={tX} y1={0} x2={tX} y2={H} stroke="var(--red)" strokeWidth="0.6" strokeDasharray="2,1.5"/>
+        </svg>
+        <div style={{display:'flex',gap:14,alignItems:'center'}}>
+          {[{c:'var(--green)',l:'BENIGN'},{c:'var(--amber)',l:'ATTACK'},{c:'var(--red)',l:'THRESHOLD',line:true}].map(x=>(
+            <span key={x.l} style={{display:'flex',alignItems:'center',gap:5}}>
+              {x.line
+                ? <span style={{display:'inline-block',width:1,height:12,background:x.c}}/>
+                : <span style={{display:'inline-block',width:10,height:10,background:x.c,borderRadius:2,opacity:0.7}}/>}
+              <span style={{font:'400 10px var(--mono)',color:'var(--muted)'}}>{x.l}</span>
+            </span>
+          ))}
+        </div>
+        <div style={{font:'400 10px var(--mono)',color:'var(--dim)'}}>
+          BENIGN ≈ -0.19..-0.12; DoS/DDoS shift right of threshold; stealthy attacks overlap BENIGN
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ConfusionMini = () => {
+  const { tn,fp,fn,tp } = MODEL_METRICS.confusion_matrix;
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',overflow:'hidden'}}>
+      <SectionHead title="Confusion Matrix"/>
+      <div style={{flex:1,padding:'12px 14px',display:'flex',flexDirection:'column',gap:10}}>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+          {[{k:'True Positive',v:tp,c:'var(--green)'},{k:'False Positive',v:fp,c:'var(--red)'},
+            {k:'False Negative',v:fn,c:'var(--amber)'},{k:'True Negative',v:tn,c:'var(--cyan)'}].map(({k,v,c})=>(
+            <div key={k} style={{background:'var(--surface3)',padding:'10px 12px',borderRadius:3,border:`1px solid ${c}22`}}>
+              <div style={{font:'500 9px var(--sans)',letterSpacing:'0.10em',textTransform:'uppercase',color:'var(--muted)',marginBottom:4}}>{k}</div>
+              <div style={{font:'700 18px var(--mono)',color:c}}>{fmtK(v)}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{borderTop:'1px solid var(--border)',paddingTop:8}}>
+          <div style={{font:'500 9px var(--sans)',letterSpacing:'0.10em',textTransform:'uppercase',color:'var(--muted)',marginBottom:4}}>Decision Threshold</div>
+          <div style={{font:'700 16px var(--mono)',color:'var(--amber)'}}>{TWEAK_DEFAULTS.scoreThreshold.toFixed(6)}</div>
+          <div style={{font:'400 10px var(--mono)',color:'var(--dim)',marginTop:2}}>grid-search · max F1 on val split</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─── MODEL VIEW ─────────────────────────────────────── */
+const ModelView = () => {
+  const rows = [
+    {k:'Accuracy',  v:MODEL_METRICS.accuracy,  c:'var(--cyan)'},
+    {k:'Precision', v:MODEL_METRICS.precision, c:'var(--green)'},
+    {k:'Recall',    v:MODEL_METRICS.recall,    c:'var(--amber)'},
+    {k:'F1 Score',  v:MODEL_METRICS.f1,        c:'var(--amber)'},
+    {k:'F1 Macro',  v:MODEL_METRICS.f1_macro,  c:'var(--amber2)'},
+    {k:'ROC-AUC',   v:MODEL_METRICS.roc_auc,   c:'var(--violet)'},
+    {k:'FPR',       v:MODEL_METRICS.false_positive_rate, c:'var(--red)', invert:true},
+    {k:'TPR',       v:MODEL_METRICS.true_positive_rate,  c:'var(--green)'},
+  ];
+  const config = [
+    ['Model','Isolation Forest'],['n_estimators','200'],['max_samples','0.1'],
+    ['contamination','auto'],['max_features','0.5'],['bootstrap','False'],
+    ['random_state','42'],['n_features selected','50'],['train_subsample','400,000'],
+    ['threshold grid','401 pts'],['split (train/val/test)','70 / 15 / 15'],['dataset','CIC-IDS-2017'],
+  ];
+  return (
+    <div style={{flex:1, display:'flex', flexDirection:'column', overflow:'hidden'}}>
+      <div style={{padding:'14px 20px', borderBottom:'1px solid var(--border)', background:'var(--surface2)', flexShrink:0}}>
+        <div style={{font:'700 16px var(--sans)', color:'var(--text)'}}>Model Performance Report</div>
+        <div style={{font:'400 12px var(--mono)', color:'var(--muted)', marginTop:3}}>Isolation Forest · Semi-supervised · Trained on BENIGN-only rows</div>
+      </div>
+      <div style={{flex:1, overflowY:'auto', padding:'16px 20px', display:'flex', flexDirection:'column', gap:16}}>
+
+        {/* Metrics */}
+        <div>
+          <div style={{font:'600 11px var(--sans)', letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--muted)', marginBottom:10}}>Evaluation Metrics — Validation Set</div>
+          <div style={{display:'flex', flexDirection:'column', gap:8}}>
+            {rows.map(r=>(
+              <div key={r.k} style={{display:'grid', gridTemplateColumns:'140px 1fr 72px', alignItems:'center', gap:12}}>
+                <span style={{font:'500 12px var(--sans)', color:'var(--text)'}}>{r.k}</span>
+                <div style={{height:8,background:'var(--border)',borderRadius:4,overflow:'hidden'}}>
+                  <div style={{height:'100%',width:`${(r.invert?(1-r.v):r.v)*100}%`,background:r.c,borderRadius:4,opacity:0.75,transition:'width 0.9s'}}/>
+                </div>
+                <span style={{font:'700 13px var(--mono)', color:r.c, textAlign:'right'}}>{f4(r.v)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Per-attack recall */}
+        <div>
+          <div style={{font:'600 11px var(--sans)', letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--muted)', marginBottom:10}}>Per-Attack Detection Recall</div>
+          <div style={{display:'flex', flexDirection:'column', gap:10}}>
+            {ATTACK_CATS.map(cat=>{
+              const d=ATTACK_RECALL[cat]; const r=d.recall;
+              return <div key={cat} style={{display:'grid',gridTemplateColumns:'120px 1fr 72px 80px',alignItems:'center',gap:12}}>
+                <CatBadge cat={cat} size="lg"/>
+                <div style={{height:8,background:'var(--border)',borderRadius:4,overflow:'hidden'}}>
+                  <div style={{height:'100%',width:`${r*100}%`,background:CAT_COLOR[cat],borderRadius:4,opacity:0.75}}/>
+                </div>
+                <span style={{font:'700 13px var(--mono)',color:r>=0.95?'var(--green)':r>=0.85?'var(--amber)':'var(--red)'}}>{pct(r)}</span>
+                <span style={{font:'400 11px var(--mono)',color:'var(--dim)'}}>n={fmtK(d.n)}</span>
+              </div>;
+            })}
+          </div>
+        </div>
+
+        {/* Config */}
+        <div>
+          <div style={{font:'600 11px var(--sans)', letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--muted)', marginBottom:10}}>Model Config — ModelConfig</div>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:6}}>
+            {config.map(([k,v])=>(
+              <div key={k} style={{background:'var(--surface2)',border:'1px solid var(--border)',padding:'8px 10px',borderRadius:3}}>
+                <div style={{font:'500 9px var(--sans)',letterSpacing:'0.10em',textTransform:'uppercase',color:'var(--dim)',marginBottom:3}}>{k}</div>
+                <div style={{font:'600 13px var(--mono)',color:'var(--text)'}}>{v}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Confusion matrix */}
+        <div>
+          <div style={{font:'600 11px var(--sans)', letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--muted)', marginBottom:10}}>Confusion Matrix — Validation Set</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8}}>
+            {[{k:'True Positive',v:MODEL_METRICS.confusion_matrix.tp,c:'var(--green)'},
+              {k:'False Positive',v:MODEL_METRICS.confusion_matrix.fp,c:'var(--red)'},
+              {k:'False Negative',v:MODEL_METRICS.confusion_matrix.fn,c:'var(--amber)'},
+              {k:'True Negative',v:MODEL_METRICS.confusion_matrix.tn,c:'var(--cyan)'}].map(({k,v,c})=>(
+              <div key={k} style={{background:'var(--surface2)',border:`1px solid ${c}33`,padding:'12px 14px',borderRadius:3}}>
+                <div style={{font:'500 10px var(--sans)',letterSpacing:'0.10em',textTransform:'uppercase',color:'var(--muted)',marginBottom:6}}>{k}</div>
+                <div style={{font:'700 22px var(--mono)',color:c}}>{fmtK(v)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+/* ─── EVENTS VIEW ────────────────────────────────────── */
+const EventsView = ({ events, threshold, density, onDismiss }) => {
+  const [catF,setCatF]=useState(null), [statF,setStatF]=useState(null);
+  const [search,setSearch]=useState(''), [sortK,setSortK]=useState('ts'), [sortD,setSortD]=useState(-1);
+  const rowH = density==='compact'?30:density==='spacious'?46:38;
+  const tS = k => { if(sortK===k) setSortD(d=>-d); else{setSortK(k);setSortD(-1);} };
+  const rows = useMemo(()=>[...events]
+    .filter(e=>!catF||e.cat===catF).filter(e=>!statF||e.status===statF)
+    .filter(e=>!search||[e.sub,e.src,e.dst,e.cat].some(v=>v.toLowerCase().includes(search.toLowerCase())))
+    .sort((a,b)=>{ const av=a[sortK],bv=b[sortK]; return av<bv?-sortD:av>bv?sortD:0; }),
+    [events,catF,statF,search,sortK,sortD]);
+
+  const statColor = {DETECTED:'var(--green)',MISSED:'var(--red)',FP:'var(--amber)',OK:'var(--cyan)'};
+  const CH = ({k,label,w}) => (
+    <th onClick={()=>tS(k)} style={{font:'600 10px var(--sans)',letterSpacing:'0.10em',textTransform:'uppercase',
+      color:sortK===k?'var(--amber)':'var(--muted)',cursor:'pointer',padding:'0 10px',textAlign:'left',
+      whiteSpace:'nowrap',userSelect:'none',width:w}}>{label}{sortK===k?(sortD>0?' ↑':' ↓'):''}</th>
+  );
+
+  return (
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      {/* Toolbar */}
+      <div style={{padding:'10px 14px',borderBottom:'1px solid var(--border)',background:'var(--surface2)',
+        display:'flex',alignItems:'center',gap:8,flexShrink:0,flexWrap:'wrap'}}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search events…"
+          style={{background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text)',
+            font:'400 12px var(--mono)',padding:'5px 10px',borderRadius:3,width:180,outline:'none'}}/>
+        <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+          {ATTACK_CATS.concat(['BENIGN']).map(c=>(
+            <button key={c} onClick={()=>setCatF(f=>f===c?null:c)} style={{
+              font:'600 9px var(--mono)',letterSpacing:'0.06em',padding:'3px 8px',borderRadius:3,cursor:'pointer',
+              background:catF===c?CAT_BG[c]:'transparent',
+              border:`1px solid ${catF===c?(CAT_COLOR[c]+'88'):'var(--border)'}`,
+              color:catF===c?CAT_COLOR[c]:'var(--dim)'}}>
+              {c}
+            </button>
+          ))}
+        </div>
+        <div style={{display:'flex',gap:4}}>
+          {['DETECTED','MISSED','FP','OK'].map(s=>(
+            <button key={s} onClick={()=>setStatF(f=>f===s?null:s)} style={{
+              font:'600 9px var(--mono)',letterSpacing:'0.06em',padding:'3px 8px',borderRadius:3,cursor:'pointer',
+              background:statF===s?`${statColor[s]}18`:'transparent',
+              border:`1px solid ${statF===s?(statColor[s]+'88'):'var(--border)'}`,
+              color:statF===s?statColor[s]:'var(--dim)'}}>
+              {s}
+            </button>
+          ))}
+        </div>
+        <div style={{flex:1}}/>
+        <span style={{font:'400 11px var(--mono)',color:'var(--muted)'}}>{rows.length} / {events.length} events</span>
+      </div>
+
+      {/* Table */}
+      <div style={{flex:1,overflowY:'auto'}}>
+        <table style={{width:'100%',borderCollapse:'collapse',tableLayout:'fixed'}}>
+          <colgroup>
+            <col style={{width:5}}/><col style={{width:92}}/><col style={{width:88}}/><col/>
+            <col style={{width:130}}/><col style={{width:110}}/><col style={{width:36}}/>
+            <col style={{width:80}}/><col style={{width:90}}/><col style={{width:24}}/>
+          </colgroup>
+          <thead>
+            <tr style={{background:'var(--surface)',height:32,position:'sticky',top:0,zIndex:2}}>
+              <th/><CH k="ts" label="Timestamp"/><CH k="cat" label="Category"/>
+              <CH k="sub" label="Subtype"/><CH k="src" label="Source IP"/>
+              <CH k="dst" label="Endpoint"/>
+              <th style={{font:'600 10px var(--sans)',letterSpacing:'0.10em',textTransform:'uppercase',color:'var(--muted)',padding:'0 10px',textAlign:'left'}}>GEO</th>
+              <CH k="score" label="Score"/><CH k="status" label="Status"/><th/>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((ev,i)=>{
+              const sc=statColor[ev.status], isAnom=ev.score>=threshold;
+              return <tr key={ev.id} style={{height:rowH,
+                  background:i%2===0?'transparent':'oklch(0.14 0.018 245/0.4)',cursor:'default',
+                  borderLeft:ev.status==='DETECTED'?'3px solid var(--green)33':ev.status==='MISSED'?'3px solid var(--red)33':'3px solid transparent'}}
+                onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'}
+                onMouseLeave={e=>e.currentTarget.style.background=i%2===0?'transparent':'oklch(0.14 0.018 245/0.4)'}>
+                <td/>
+                <td style={{font:'400 11px var(--mono)',color:'var(--muted)',padding:'0 10px',whiteSpace:'nowrap'}}>{fmtTs(ev.ts)}</td>
+                <td style={{padding:'0 10px'}}>{ev.cat!=='BENIGN'?<CatBadge cat={ev.cat}/>:<span style={{font:'400 11px var(--mono)',color:'var(--dim)'}}>BENIGN</span>}</td>
+                <td style={{font:'500 12px var(--sans)',color:ev.cat==='BENIGN'?'var(--dim)':'var(--text)',padding:'0 10px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{ev.sub}</td>
+                <td style={{font:'400 11px var(--mono)',color:'var(--cyan)',padding:'0 10px',whiteSpace:'nowrap'}}>{ev.src}</td>
+                <td style={{font:'400 11px var(--mono)',color:'var(--muted)',padding:'0 10px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{ev.dst}</td>
+                <td style={{font:'700 10px var(--mono)',color:'var(--dim)',padding:'0 10px',letterSpacing:'0.05em'}}>{ev.geo}</td>
+                <td style={{padding:'0 10px'}}>
+                  <span style={{font:'600 12px var(--mono)',color:isAnom?(ev.score>0.05?'var(--red)':'var(--amber)'):'var(--dim)'}}>{ev.score.toFixed(4)}</span>
+                </td>
+                <td style={{padding:'0 10px'}}><span style={{font:'600 11px var(--mono)',color:sc,letterSpacing:'0.06em'}}>{ev.status}</span></td>
+                <td style={{padding:'0 4px'}}>
+                  <button onClick={()=>onDismiss(ev.id)} style={{background:'transparent',border:'none',color:'var(--dim)',cursor:'pointer',font:'11px var(--mono)',padding:2}}>✕</button>
+                </td>
+              </tr>;
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+/* ─── NETWORK VIEW ───────────────────────────────────── */
+const NetworkView = ({ events }) => {
+  const srcCounts={}, dstCounts={}, catCounts={};
+  events.filter(e=>e.cat!=='BENIGN').forEach(e=>{
+    srcCounts[e.src]=(srcCounts[e.src]||0)+1;
+    dstCounts[e.dst]=(dstCounts[e.dst]||0)+1;
+    catCounts[e.cat]=(catCounts[e.cat]||0)+1;
+  });
+  const topSrc=Object.entries(srcCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const topDst=Object.entries(dstCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const maxSrc=topSrc[0]?.[1]||1, maxDst=topDst[0]?.[1]||1;
+
+  return (
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <div style={{padding:'14px 20px',borderBottom:'1px solid var(--border)',background:'var(--surface2)',flexShrink:0}}>
+        <div style={{font:'700 16px var(--sans)',color:'var(--text)'}}>Network Analysis</div>
+        <div style={{font:'400 12px var(--mono)',color:'var(--muted)',marginTop:3}}>Attack traffic source / destination breakdown from live event stream</div>
+      </div>
+      <div style={{flex:1,overflowY:'auto',padding:'16px 20px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
+        {/* Category breakdown */}
+        <div style={{gridColumn:'1/-1'}}>
+          <div style={{font:'600 11px var(--sans)',letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--muted)',marginBottom:12}}>Attack Category Distribution</div>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            {Object.entries(catCounts).sort((a,b)=>b[1]-a[1]).map(([cat,n])=>{
+              const total=Object.values(catCounts).reduce((s,v)=>s+v,0);
+              return <div key={cat} style={{background:'var(--surface2)',border:`1px solid ${CAT_COLOR[cat]}44`,
+                padding:'10px 16px',borderRadius:4,minWidth:120}}>
+                <CatBadge cat={cat} size="lg"/>
+                <div style={{font:'700 22px var(--mono)',color:CAT_COLOR[cat],marginTop:6}}>{n}</div>
+                <div style={{font:'400 10px var(--mono)',color:'var(--dim)',marginTop:2}}>{((n/total)*100).toFixed(1)}% of attacks</div>
+              </div>;
+            })}
+          </div>
+        </div>
+
+        {/* Top sources */}
+        <div>
+          <div style={{font:'600 11px var(--sans)',letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--muted)',marginBottom:10}}>Top Source IPs</div>
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            {topSrc.map(([ip,n],i)=>(
+              <div key={ip}>
+                <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <span style={{font:'700 10px var(--mono)',color:'var(--dim)',minWidth:18}}>{String(i+1).padStart(2,'0')}</span>
+                    <span style={{font:'500 12px var(--mono)',color:'var(--cyan)'}}>{ip}</span>
+                  </div>
+                  <span style={{font:'700 13px var(--mono)',color:'var(--amber)'}}>{n}</span>
+                </div>
+                <div style={{height:4,background:'var(--border)',borderRadius:2,overflow:'hidden'}}>
+                  <div style={{height:'100%',width:`${(n/maxSrc)*100}%`,background:i===0?'var(--red)':'var(--amber)',borderRadius:2,opacity:0.75}}/>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Top destinations */}
+        <div>
+          <div style={{font:'600 11px var(--sans)',letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--muted)',marginBottom:10}}>Most Targeted Endpoints</div>
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            {topDst.map(([host,n],i)=>(
+              <div key={host}>
+                <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <span style={{font:'700 10px var(--mono)',color:'var(--dim)',minWidth:18}}>{String(i+1).padStart(2,'0')}</span>
+                    <span style={{font:'500 12px var(--mono)',color:'var(--text)'}}>{host}</span>
+                  </div>
+                  <span style={{font:'700 13px var(--mono)',color:'var(--violet)'}}>{n}</span>
+                </div>
+                <div style={{height:4,background:'var(--border)',borderRadius:2,overflow:'hidden'}}>
+                  <div style={{height:'100%',width:`${(n/maxDst)*100}%`,background:'var(--violet)',borderRadius:2,opacity:0.75}}/>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─── REPORTS VIEW ───────────────────────────────────── */
+const ReportsView = ({ events }) => {
+  const total=events.length, attacks=events.filter(e=>e.cat!=='BENIGN').length;
+  const det=events.filter(e=>e.status==='DETECTED').length;
+  const missed=events.filter(e=>e.status==='MISSED').length;
+  const fp=events.filter(e=>e.status==='FP').length;
+  const sections = [
+    { title:'Executive Summary', content:[
+      `SENTINEL detected ${det} of ${attacks} attack events in the current session window.`,
+      `${missed} attacks were missed (below decision threshold of ${TWEAK_DEFAULTS.scoreThreshold.toFixed(4)}).`,
+      `${fp} benign flows were incorrectly flagged as anomalous (false positives).`,
+      `Model precision on this window: ${attacks>0?((det/(det+fp+0.001))*100).toFixed(1):'N/A'}%.`,
+    ]},
+    { title:'IForest Model — Key Metrics', rows:[
+      ['Accuracy','0.8603'],['Precision','0.7545'],['Recall','0.4309'],
+      ['F1 Score','0.5486'],['ROC-AUC','0.8195'],['False Positive Rate','3.44%'],
+    ]},
+    { title:'Attack Coverage', rows: ATTACK_CATS.map(c=>[c, pct(ATTACK_RECALL[c].recall), `n=${fmtK(ATTACK_RECALL[c].n)}`])},
+    { title:'Pipeline Configuration', rows:[
+      ['Algorithm','Isolation Forest (sklearn)'],['n_estimators','200'],
+      ['Features','50 (post-correlation pruning)'],['Training set','BENIGN-only (semi-supervised)'],
+      ['Train subsample','400,000 rows'],['Threshold','Grid-search on val · max F1'],
+      ['Dataset','CIC-IDS-2017 (Canadian Institute for Cybersecurity)'],
+      ['Attack categories','DoS · DDoS · PortScan · Brute Force · Web Attack · Botnet'],
+    ]},
+  ];
+  return (
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <div style={{padding:'14px 20px',borderBottom:'1px solid var(--border)',background:'var(--surface2)',flexShrink:0}}>
+        <div style={{font:'700 16px var(--sans)',color:'var(--text)'}}>Session Report</div>
+        <div style={{font:'400 12px var(--mono)',color:'var(--muted)',marginTop:3}}>Generated {fmtFull(new Date())} · ARTI 308 · Group 2 · IAU</div>
+      </div>
+      <div style={{flex:1,overflowY:'auto',padding:'20px',display:'flex',flexDirection:'column',gap:20}}>
+        {sections.map(s=>(
+          <div key={s.title} style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:4,overflow:'hidden'}}>
+            <div style={{padding:'10px 14px',borderBottom:'1px solid var(--border)',background:'var(--surface3)'}}>
+              <span style={{font:'600 11px var(--sans)',letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--muted)'}}>{s.title}</span>
+            </div>
+            <div style={{padding:'14px 16px'}}>
+              {s.content?.map((line,i)=>(
+                <div key={i} style={{font:'400 13px var(--sans)',color:'var(--text)',marginBottom:6,lineHeight:1.6, display:'flex',gap:8}}>
+                  <span style={{color:'var(--amber)',flexShrink:0}}>—</span>{line}
+                </div>
+              ))}
+              {s.rows && (
+                <table style={{width:'100%',borderCollapse:'collapse'}}>
+                  <tbody>
+                    {s.rows.map((row,i)=>(
+                      <tr key={i} style={{borderBottom:'1px solid var(--border)'}}>
+                        {row.map((cell,j)=>(
+                          <td key={j} style={{padding:'7px 8px',
+                            font:j===0?'500 12px var(--sans)':'400 12px var(--mono)',
+                            color:j===0?'var(--muted)':'var(--text)'}}>
+                            {j===1&&s.title.includes('Coverage')
+                              ? <span style={{color:parseFloat(cell)>=95?'var(--green)':parseFloat(cell)>=85?'var(--amber)':'var(--red)'}}>{cell}</span>
+                              : cell}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/* ─── DASHBOARD OVERVIEW ─────────────────────────────── */
+const DashboardView = ({ events, sparkEPS, sparkDetect, sparkScore, threshold, density, liveUpdates, onDismiss, onSelectEvent, selectedEvent }) => {
+  const detectedCount=events.filter(e=>e.status==='DETECTED').length;
+  const fpCount=events.filter(e=>e.status==='FP').length;
+  const missedCount=events.filter(e=>e.status==='MISSED').length;
+  const liveF1=detectedCount/(detectedCount+fpCount/2+missedCount+0.001);
+  const avgScore=events.length>0?(events.reduce((s,e)=>s+e.score,0)/events.length).toFixed(4):0;
+
+  return (
+    <div style={{flex:1, display:'flex', flexDirection:'column', overflow:'hidden'}}>
+      {/* Metric row */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:1,background:'var(--border)',flexShrink:0}}>
+        <MetricCard label="Events / sec" value={fmtK(sparkEPS[sparkEPS.length-1])} sub="flow classification" color="var(--cyan)" spark={sparkEPS}/>
+        <MetricCard label="Live F1" value={liveF1.toFixed(4)} sub="rolling session window" color="var(--amber)" spark={sparkDetect} alert={liveF1<0.88}/>
+        <MetricCard label="ROC-AUC" value={f4(MODEL_METRICS.roc_auc)} sub="val set · IForest" color="var(--violet)"/>
+        <MetricCard label="Avg Anomaly Score" value={avgScore} sub={`thr = ${threshold.toFixed(4)}`} color={avgScore>threshold?'var(--red)':'var(--amber)'} spark={sparkScore}/>
+        <MetricCard label="FPR" value={pct(MODEL_METRICS.false_positive_rate)} sub="benign mis-flagged" color="var(--green)"/>
+      </div>
+
+      {/* Middle panels */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 240px',gap:1,background:'var(--border)',height:220,flexShrink:0}}>
+        <div style={{background:'var(--surface)',overflow:'hidden'}}><AttackRecallPanel/></div>
+        <div style={{background:'var(--surface)',overflow:'hidden'}}><ScoreHistogram events={events} threshold={threshold}/></div>
+        <div style={{background:'var(--surface)',overflow:'hidden'}}><ConfusionMini/></div>
+      </div>
+
+      {/* Bottom: event feed + detail */}
+      <div style={{flex:1,display:'grid',gridTemplateColumns:'1fr 240px',gap:1,background:'var(--border)',overflow:'hidden'}}>
+        <div style={{background:'var(--surface)',overflow:'hidden',display:'flex',flexDirection:'column'}}>
+          <SectionHead title="Live Event Feed — IForest Predictions"
+            right={liveUpdates&&<span style={{display:'flex',alignItems:'center',gap:5,color:'var(--green)'}}>
+              <span style={{animation:'blink 1s steps(1) infinite',fontSize:9}}>●</span>
+              <span style={{font:'500 10px var(--mono)'}}>LIVE</span>
+            </span>}/>
+          <div style={{flex:1,overflow:'hidden'}}>
+            <EventsView events={events.slice(0,60)} threshold={threshold} density={density}
+              onDismiss={onDismiss}/>
+          </div>
+        </div>
+        {/* Mini detail */}
+        <div style={{background:'var(--surface)',overflow:'hidden',display:'flex',flexDirection:'column'}}>
+          <SectionHead title="Session Stats"/>
+          <div style={{flex:1,padding:'14px',display:'flex',flexDirection:'column',gap:10,overflowY:'auto'}}>
+            {[{l:'Total Events',v:events.length,c:'var(--text)'},{l:'Attacks',v:events.filter(e=>e.cat!=='BENIGN').length,c:'var(--amber)'},
+              {l:'Detected',v:detectedCount,c:'var(--green)'},{l:'Missed',v:missedCount,c:'var(--red)'},
+              {l:'False Positives',v:fpCount,c:'var(--amber)'},{l:'Benign OK',v:events.filter(e=>e.status==='OK').length,c:'var(--cyan)'}].map(({l,v,c})=>(
+              <div key={l} style={{display:'flex',justifyContent:'space-between',alignItems:'center',paddingBottom:8,borderBottom:'1px solid var(--border)'}}>
+                <span style={{font:'500 12px var(--sans)',color:'var(--muted)'}}>{l}</span>
+                <span style={{font:'700 16px var(--mono)',color:c}}>{v}</span>
+              </div>
+            ))}
+            <div style={{marginTop:4}}>
+              <div style={{font:'500 10px var(--sans)',letterSpacing:'0.10em',textTransform:'uppercase',color:'var(--muted)',marginBottom:6}}>Attack Breakdown</div>
+              {ATTACK_CATS.map(cat=>{
+                const n=events.filter(e=>e.cat===cat).length;
+                if(!n) return null;
+                return <div key={cat} style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                  <CatBadge cat={cat}/><span style={{font:'600 13px var(--mono)',color:CAT_COLOR[cat]}}>{n}</span>
+                </div>;
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─── SIDEBAR ────────────────────────────────────────── */
+const NAV = [
+  {id:'dashboard', icon:'⬡', label:'Dashboard'},
+  {id:'model',     icon:'◈', label:'Model'},
+  {id:'events',    icon:'◫', label:'Events'},
+  {id:'network',   icon:'◎', label:'Network'},
+  {id:'reports',   icon:'▤', label:'Reports'},
+];
+
+const Sidebar = ({ active, onNav }) => (
+  <div style={{width:68, background:'var(--surface)', borderRight:'1px solid var(--border)',
+    display:'flex', flexDirection:'column', alignItems:'stretch', padding:'10px 6px', gap:2, flexShrink:0}}>
+    {NAV.map(item => {
+      const isActive = active===item.id;
+      return (
+        <button key={item.id} onClick={()=>onNav(item.id)} title={item.label} style={{
+          display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+          gap:3, padding:'8px 4px', borderRadius:4, cursor:'pointer',
+          background:isActive?'var(--amber-bg)':'transparent',
+          border:isActive?'1px solid var(--amber)55':'1px solid transparent',
+          color:isActive?'var(--amber)':'var(--dim)',
+        }}>
+          <span style={{fontSize:18, lineHeight:1}}>{item.icon}</span>
+          <span style={{font:`500 9px var(--sans)`, letterSpacing:'0.08em', textTransform:'uppercase',
+            color:isActive?'var(--amber)':'var(--dim)'}}>{item.label}</span>
+        </button>
+      );
+    })}
+  </div>
+);
+
+/* ─── TOP BAR ────────────────────────────────────────── */
+const TopBar = ({ clock, liveUpdates, eventCount, tweaksOpen, onToggleTweaks }) => (
+  <div style={{display:'flex',alignItems:'center',height:48,background:'var(--surface)',
+    borderBottom:'1px solid var(--border)',padding:'0 18px',flexShrink:0,gap:0}}>
+    <div style={{display:'flex',alignItems:'center',gap:10,marginRight:32}}>
+      <svg width="20" height="20" viewBox="0 0 20 20">
+        <polygon points="10,1 19,6 19,14 10,19 1,14 1,6" fill="none" stroke="var(--amber)" strokeWidth="1.5"/>
+        <polygon points="10,5 15,8 15,12 10,15 5,12 5,8" fill="var(--amber)" opacity="0.18"/>
+        <circle cx="10" cy="10" r="2.2" fill="var(--amber)"/>
+      </svg>
+      <span style={{font:'700 14px var(--mono)',letterSpacing:'0.18em',color:'var(--amber)'}}>SENTINEL</span>
+      <span style={{font:'400 11px var(--mono)',color:'var(--dim)',letterSpacing:'0.06em'}}>Isolation Forest · CIC-IDS-2017</span>
+    </div>
+    <div style={{display:'flex',gap:24,flex:1}}>
+      {[['n_estimators','200'],['n_features','50'],['contamination','auto'],['split','70/15/15']].map(([k,v])=>(
+        <div key={k} style={{display:'flex',alignItems:'center',gap:6}}>
+          <span style={{font:'500 9px var(--sans)',letterSpacing:'0.10em',textTransform:'uppercase',color:'var(--dim)'}}>{k}</span>
+          <span style={{font:'600 11px var(--mono)',color:'var(--muted)'}}>{v}</span>
+        </div>
+      ))}
+    </div>
+    <div style={{display:'flex',gap:16,alignItems:'center'}}>
+      {liveUpdates && <span style={{display:'flex',alignItems:'center',gap:6}}>
+        <span style={{animation:'blink 1s steps(1) infinite',fontSize:9,color:'var(--green)'}}>●</span>
+        <span style={{font:'500 11px var(--mono)',color:'var(--green)',letterSpacing:'0.08em'}}>STREAMING</span>
+      </span>}
+      <span style={{font:'500 12px var(--mono)',color:'var(--muted)'}}>{clock}</span>
+      <button onClick={onToggleTweaks} title="Toggle Tweaks panel" style={{
+        display:'flex',alignItems:'center',gap:6,padding:'6px 10px',borderRadius:4,cursor:'pointer',
+        background:tweaksOpen?'var(--amber-bg)':'transparent',
+        border:`1px solid ${tweaksOpen?'var(--amber)55':'var(--border)'}`,
+        color:tweaksOpen?'var(--amber)':'var(--muted)',
+        font:'600 10px var(--sans)',letterSpacing:'0.12em',textTransform:'uppercase'}}>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4">
+          <circle cx="6" cy="6" r="1.6"/>
+          <path d="M6 1v1.5M6 9.5V11M1 6h1.5M9.5 6H11M2.5 2.5l1 1M8.5 8.5l1 1M9.5 2.5l-1 1M3.5 8.5l-1 1"/>
+        </svg>
+        Tweaks
+      </button>
+      <div style={{width:30,height:30,borderRadius:'50%',background:'var(--surface2)',border:'1px solid var(--border)',
+        display:'flex',alignItems:'center',justifyContent:'center',font:'600 11px var(--sans)',color:'var(--amber)',cursor:'pointer'}}>AO</div>
+    </div>
+  </div>
+);
+
+/* ─── TWEAKS ─────────────────────────────────────────── */
+const TweaksPanel = ({ visible, tweaks, onChange }) => {
+  if (!visible) return null;
+  return (
+    <div style={{position:'fixed',bottom:16,right:16,zIndex:999,background:'var(--surface)',
+      border:'1px solid var(--border)',borderRadius:4,width:240,padding:16,
+      boxShadow:'0 8px 32px oklch(0.05 0.02 245/0.9)'}}>
+      <div style={{font:'600 11px var(--sans)',letterSpacing:'0.14em',textTransform:'uppercase',color:'var(--amber)',marginBottom:14}}>Tweaks</div>
+      <div style={{display:'flex',flexDirection:'column',gap:14}}>
+        <div>
+          <div style={{font:'500 10px var(--sans)',color:'var(--muted)',marginBottom:6,letterSpacing:'0.1em',textTransform:'uppercase'}}>Row Density</div>
+          <div style={{display:'flex',gap:4}}>
+            {['compact','comfortable','spacious'].map(d=>(
+              <button key={d} onClick={()=>onChange('density',d)} style={{
+                flex:1,font:'500 10px var(--mono)',padding:'5px 0',borderRadius:3,cursor:'pointer',
+                background:tweaks.density===d?'var(--amber-bg)':'var(--surface2)',
+                border:`1px solid ${tweaks.density===d?'var(--amber)55':'var(--border)'}`,
+                color:tweaks.density===d?'var(--amber)':'var(--muted)'}}>
+                {d.slice(0,4)}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <div style={{font:'500 10px var(--sans)',color:'var(--muted)',marginBottom:6,letterSpacing:'0.1em',textTransform:'uppercase'}}>Live Event Stream</div>
+          <button onClick={()=>onChange('liveUpdates',!tweaks.liveUpdates)} style={{
+            width:'100%',font:'500 11px var(--mono)',padding:'6px 0',borderRadius:3,cursor:'pointer',
+            background:tweaks.liveUpdates?'var(--green-bg)':'var(--surface2)',
+            border:`1px solid ${tweaks.liveUpdates?'var(--green)55':'var(--border)'}`,
+            color:tweaks.liveUpdates?'var(--green)':'var(--muted)'}}>
+            {tweaks.liveUpdates?'● STREAMING':'○ PAUSED'}
+          </button>
+        </div>
+        <div>
+          <div style={{font:'500 10px var(--sans)',color:'var(--muted)',marginBottom:4,letterSpacing:'0.1em',textTransform:'uppercase'}}>
+            Decision Threshold: <span style={{color:'var(--amber)',fontFamily:'var(--mono)'}}>{tweaks.scoreThreshold.toFixed(4)}</span>
+          </div>
+          <input type="range" min="-0.20" max="0.15" step="0.001"
+            value={tweaks.scoreThreshold} onChange={e=>onChange('scoreThreshold',parseFloat(e.target.value))}
+            style={{width:'100%',accentColor:'var(--amber)'}}/>
+          <div style={{display:'flex',justifyContent:'space-between',font:'400 9px var(--mono)',color:'var(--dim)',marginTop:2}}>
+            <span>sensitive</span><span>strict</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─── APP ────────────────────────────────────────────── */
+function App() {
+  const saved = (() => { try { return JSON.parse(localStorage.getItem('sentinel-nids')||'{}'); } catch(e){ return {}; } })();
+  const [tweaks, setTweaksState] = useState({...TWEAK_DEFAULTS,...saved});
+  const [tweaksOpen, setTweaksOpen] = useState(false);
+  const [nav, setNav] = useState('dashboard');
+  const [events, setEvents] = useState(INIT_EVENTS);
+  const [clock, setClock] = useState(fmtFull(new Date()));
+  const [sparkEPS,    setSparkEPS]    = useState(()=>Array.from({length:22},()=>rInt(600,2800)));
+  const [sparkDetect, setSparkDetect] = useState(()=>Array.from({length:22},()=>rF(0.50,0.60)));
+  const [sparkScore,  setSparkScore]  = useState(()=>Array.from({length:22},()=>rF(-0.16,-0.10)));
+
+  const setTweaks = (k,v) => {
+    const next={...tweaks,[k]:v};
+    setTweaksState(next);
+    localStorage.setItem('sentinel-nids',JSON.stringify(next));
+    window.parent.postMessage({type:'__edit_mode_set_keys',edits:{[k]:v}},'*');
+  };
+
+  useEffect(()=>{
+    const h=e=>{
+      if(e.data?.type==='__activate_edit_mode') setTweaksOpen(true);
+      if(e.data?.type==='__deactivate_edit_mode') setTweaksOpen(false);
+    };
+    window.addEventListener('message',h);
+    window.parent.postMessage({type:'__edit_mode_available'},'*');
+    return ()=>window.removeEventListener('message',h);
+  },[]);
+
+  useEffect(()=>{ const id=setInterval(()=>setClock(fmtFull(new Date())),1000); return ()=>clearInterval(id); },[]);
+
+  useEffect(()=>{
+    if(!tweaks.liveUpdates) return;
+    const id=setInterval(()=>{
+      setEvents(p=>[mkEv(tweaks.scoreThreshold),...p].slice(0,250));
+      setSparkEPS(p=>[...p.slice(1),rInt(600,2800)]);
+      setSparkDetect(p=>[...p.slice(1),rF(0.50,0.60)]);
+      setSparkScore(p=>[...p.slice(1),rF(-0.16,-0.08)]);
+    },2800);
+    return ()=>clearInterval(id);
+  },[tweaks.liveUpdates, tweaks.scoreThreshold]);
+
+  const dismissEv = useCallback(id=>setEvents(p=>p.filter(e=>e.id!==id)),[]);
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100vh',overflow:'hidden'}}>
+      <TopBar clock={clock} liveUpdates={tweaks.liveUpdates} eventCount={events.length}
+        tweaksOpen={tweaksOpen} onToggleTweaks={()=>setTweaksOpen(v=>!v)}/>
+      <div style={{display:'flex',flex:1,overflow:'hidden'}}>
+        <Sidebar active={nav} onNav={setNav}/>
+        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+          {nav==='dashboard' && <DashboardView events={events} sparkEPS={sparkEPS} sparkDetect={sparkDetect}
+            sparkScore={sparkScore} threshold={tweaks.scoreThreshold} density={tweaks.density}
+            liveUpdates={tweaks.liveUpdates} onDismiss={dismissEv}/>}
+          {nav==='model'   && <ModelView/>}
+          {nav==='events'  && <EventsView events={events} threshold={tweaks.scoreThreshold}
+            density={tweaks.density} onDismiss={dismissEv}/>}
+          {nav==='network' && <NetworkView events={events}/>}
+          {nav==='reports' && <ReportsView events={events}/>}
+        </div>
+      </div>
+      <TweaksPanel visible={tweaksOpen} tweaks={tweaks} onChange={setTweaks}/>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
