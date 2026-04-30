@@ -1,5 +1,5 @@
 # Dataset (large files - use Git LFS)
-data/raw/
+# data/raw/ is tracked via Git LFS (see .gitattributes)
 data/processed/
 
 # Python
